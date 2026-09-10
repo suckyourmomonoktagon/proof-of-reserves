@@ -53,11 +53,11 @@ func InitPorCsvDataMap(fileName string) (coinData map[string]*CoinData, err erro
 		}
 
 		if strings.Contains(string(line), "coin,") {
-			off = DetectPorFormatOffset(strings.Split(string(line), ","))
+			off = DetectPorFormatOffset(ParseCSVLine(string(line)))
 			continue
 		}
 
-		args := strings.Split(string(line), ",")
+		args := ParseCSVLine(string(line))
 		if len(args) < 9+off {
 			continue
 		}

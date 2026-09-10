@@ -37,43 +37,11 @@ func init() {
 
 func initConfig() {}
 
-func parseLine(line string) []string {
-	var result []string
-	var part string
-	inBrackets := false
-
-	for i := 0; i < len(line); i++ {
-		char := line[i]
-
-		switch char {
-		case '[':
-			inBrackets = true
-			part += string(char)
-		case ']':
-			inBrackets = false
-			part += string(char)
-		case ',':
-			if inBrackets {
-				part += string(char)
-			} else {
-				result = append(result, part)
-				part = ""
-			}
-		default:
-			part += string(char)
-		}
-	}
-
-	result = append(result, part)
-
-	return result
-}
-
 func handle(i int, line string, off int) (coin string, success bool) {
 	if len(line) == 0 {
 		return "", true
 	}
-	as := parseLine(line)
+	as := common.ParseCSVLine(line)
 	if len(as) < 9+off {
 		fmt.Println(fmt.Sprintf("Fail to verify address signature.The line %d has fewer columns than the report header.", i+1))
 		return "", false
@@ -125,86 +93,20 @@ func handle(i int, line string, off int) (coin string, success bool) {
 		return coin, false
 	}
 
-	scheme, _ := common.NetworkType(network)
-	switch scheme {
-	case common.EvmCoinTye:
-		if eoa1 != "" && eoa2 != "" {
-			if err := common.VerifyEvmCoin(network, eoa1, message, sign1); err != nil {
-				fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", addr, i+1, err))
-				return coin, false
-			}
-			if err := common.VerifyEvmCoin(network, eoa2, message, sign2); err != nil {
-				fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", addr, i+1, err))
-				return coin, false
-			}
-		} else if eoa1 != "" {
-			if err := common.VerifyEvmCoin(network, eoa1, message, sign1); err != nil {
-				fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", eoa1, i+1, err))
-				return coin, false
-			}
-		} else {
-			if err := common.VerifyEvmCoin(network, addr, message, sign1); err != nil {
-				fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", addr, i+1, err))
-				return coin, false
-			}
-		}
-	case common.EcdsaCoinType:
-		if eoa1 != "" && eoa2 != "" {
-			if err := common.VerifyEcdsaCoin(network, eoa1, message, sign1); err != nil {
-				fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", addr, i+1, err))
-				return coin, false
-			}
-			if err := common.VerifyEcdsaCoin(network, eoa2, message, sign2); err != nil {
-				fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", addr, i+1, err))
-				return coin, false
-			}
-		} else if eoa1 != "" {
-			if err := common.VerifyEcdsaCoin(network, eoa1, message, sign1); err != nil {
-				fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", addr, i+1, err))
-				return coin, false
-			}
-		} else {
-			if err := common.VerifyEcdsaCoin(network, addr, message, sign1); err != nil {
-				fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", addr, i+1, err))
-				return coin, false
-			}
-		}
-	case common.Ed25519CoinType:
-		// owner mode: when eoa1 (current authentication key, e.g. a rotated APTOS account)
-		// is present, verify against eoa1 instead of the claimed address (mirrors EVM owner mode).
-		if eoa1 != "" {
-			if err := common.VerifyEd25519Coin(network, eoa1, message, sign1, script); err != nil {
-				fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", eoa1, i+1, err))
-				return coin, false
-			}
-		} else {
-			if err := common.VerifyEd25519Coin(network, addr, message, sign1, script); err != nil {
-				fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", addr, i+1, err))
-				return coin, false
-			}
-		}
-	case common.TrxCoinType:
-		if err := common.VerifyTRX(addr, message, sign1); err != nil {
-			fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", addr, i+1, err))
-			return coin, false
-		}
-	case common.BethCoinType:
-		if err := common.VerifyBETH(addr, message, sign1); err != nil {
-			fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", addr, i+1, err))
-			return coin, false
-		}
-	case common.UTXOCoinType:
-		if err := common.VerifyUtxoCoin(network, addr, message, sign1, sign2, script); err != nil {
-			fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", addr, i+1, err))
-			return coin, false
-		}
-	case common.StarkCoinType:
-		if err := common.VerifyStarkCoin(network, addr, message, sign1, script); err != nil {
-			fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", addr, i+1, err))
-			return coin, false
-		}
-	default:
-		fmt.Println(fmt.Sprintf("Fail to verify address %s signature. Invaild coin type:%s", addr, network))
+	if err := common.VerifyAddressRecord(common.CSVLine{
+		LineNumber:     i + 1,
+		DigitalAsset:   coin,
+		Network:        network,
+		Address:        addr,
+		SignedMessage:  sign1,
+		SignedMessage2: sign2,
+		Message:        message,
+		PublicKey:      script,
+		Owner1:         eoa1,
+		Owner2:         eoa2,
+		RawLine:        line,
+	}); err != nil {
+		fmt.Println(fmt.Sprintf("Fail to verify address %s signature.The line %d  has error:%s.", addr, i+1, err))
 		return coin, false
 	}
 	return coin, true
