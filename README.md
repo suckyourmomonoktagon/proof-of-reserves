@@ -59,6 +59,13 @@ Download OKX's [Proof of Reserves File](https://www.okx.com/proof-of-reserves/do
 OKX's public address, and check whether the OKX snapshot height balance is consistent with the published
 balance.  [Details here](https://www.okx.com/support/hc/en-us/articles/10781041719437-How-to-verify-OKX-s-ownership-and-balance-of-the-wallet-address-)
 
+### Integrate with OKX Wallet flows
+
+If you need to embed reserve-address verification in another OKX surface, use the exported
+`common.VerifyAddressRecord` helper with a parsed PoR row. It applies the same chain-specific ownership
+checks as the CLI, so integrations can reuse the repository's verification logic instead of duplicating
+per-network signature handling.
+
 ### VerifyAddress
 
 OKX's public file contains address, message "I am an OKX address" and signature. You can use VerifyAddress to verify
@@ -149,4 +156,3 @@ Verification process for v2 version [Detail here](https://www.okx.com/support/hc
 ```shell
 ./build/MerkleValidator --merkle_file ./example/full-liabilities-merkle-tree.txt --user_info_file ./example/user_info_file.json
 ```
-
