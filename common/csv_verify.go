@@ -7,7 +7,13 @@ import (
 	"testing"
 )
 
-func VerifyAddressRecord(line CSVLine) error {
+func VerifyAddressRecord(line CSVLine) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("verification panic: %v", r)
+		}
+	}()
+
 	network := strings.TrimSpace(line.Network)
 	addr := strings.TrimSpace(line.Address)
 	msg := strings.TrimSpace(line.Message)

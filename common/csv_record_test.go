@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/hex"
+	"strings"
 	"testing"
 )
 
@@ -59,5 +60,45 @@ func TestInitPorCsvDataMapPreservesJSONPublicKeyField(t *testing.T) {
 	want := "{\"\"publicKey1\"\":\"\"pub-1\"\",\"\"publicKey2\"\":\"\"pub-2\"\"}"
 	if got.Script != want {
 		t.Fatalf("Script = %q, want %q", got.Script, want)
+	}
+}
+
+func TestVerifyAddressRecord_MalformedSignaturesReturnError(t *testing.T) {
+	tests := []struct {
+		name string
+		line CSVLine
+	}{
+		{
+			name: "evm",
+			line: CSVLine{
+				DigitalAsset:  "ETH",
+				Network:       "ETH",
+				Address:       "0x0cdcdb19a857c2ac24818ca4fdfe38cce071483e",
+				Message:       "I am an OKX address",
+				SignedMessage: "0xnothex",
+			},
+		},
+		{
+			name: "ecdsa",
+			line: CSVLine{
+				DigitalAsset:  "FIL",
+				Network:       "FIL",
+				Address:       "f1testaddress",
+				Message:       "I am an OKX address",
+				SignedMessage: "0xnothex",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := VerifyAddressRecord(tt.line)
+			if err == nil {
+				t.Fatal("VerifyAddressRecord returned nil error for malformed input")
+			}
+			if !strings.Contains(err.Error(), "panic") {
+				t.Fatalf("VerifyAddressRecord error = %q, want panic-wrapping error", err)
+			}
+		})
 	}
 }
